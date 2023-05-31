@@ -1,0 +1,180 @@
+;+++++++++++++++ RBSP Magnetic Ephemeris data +++++++++++++++++++++++++++++
+; https://rbsp-ect.newmexicoconsortium.org/data_pub/rbspa/MagEphem/
+; https://rbsp-ect.newmexicoconsortium.org/data_pub/rbspb/MagEphem/
+;
+;------------------ INPUT PARAMETERS ----------------------------------
+; probe:      VAP id/number
+;             An array of integers (1, 2) or strings ('a','b') or ('A' or 'B') 
+;             indicating the 2 s/c
+;
+; species:    0: H+, 1: e-, 2: He+, 3: O+
+;
+; units:      flux units, i.e. 'DIFF FLUX' or 'EFLUX'
+;
+; time:       Start date/time string in tplot format ('yyyy-mm-dd/hh:mm:ss')
+; timespan:   Set the time span
+;             (keywords: SECONDS, MINUTES, HOURS, DAYS (DEFAULT))
+;
+; eph_sc:     (1 or 2 or 'a' or 'b') Spacecraft number to be used in ephemeris axis
+;
+; KEYWORDS:
+;             y_axis_units --> 'eV', 'keV' or 'mu'
+;             energy_units_in_flux --> 'eV' or 'keV'
+;             PATH --> manually enter the path to the data files
+;                      If the PATH keyword is not set then the environment
+;		               variable 'RBSP_$_HOPE_L2SA' is used.
+;	          FLN --> manually enter the file name
+;	    	          If the FLN keyword is not set then the following 
+;		              file name is assumed: 'rbsp$_rel02_ect-hope-sci-L2SA_v*.cdf'
+;             NEW_NAME --> manually enter the tplot variable name
+;----------------------------------------------------------------------
+time='2013-01-01/00:00:00'
+duration = 365*5.
+timespan, time, duration, /DAYS ; SECONDS, MINUTES, HOURS, DAYS (DEFAULT)
+
+probe    = [1] ; 1 or 2 or 'a' or 'b' or 'A' or 'B'
+
+ephem_param = 'Rgsm' ; if '' then all parameters are created
+
+Bfield_model = 'T89Q' ; 'OP77Q', 'T89Q' 'T89D', 'TS04D'
+
+eph_sc = probe(n_elements(probe)-1) ; (1,2)
+;----------------------------------------------------------------------
+;PATH = '~/data/rbsp-a/ect/hope/'
+;FLN  = 'rbspa_rel01_ect-hope-sci-L2SA_20130115_v3.0.1.cdf'
+;NEW_NAME = 'HOPE_electron_flux'
+
+plot_rbsp_magephem, probe, $
+						Bfield_model = Bfield_model, $
+						All = 0, $
+						variable = ephem_param, $
+			    		new_name=NEW_NAME, $
+		        		path=PATH, $
+		        		fln=FLN
+
+;----------------------------------------------------------------------
+; Set plot ephemeris axis
+;----------------------------------------------------------------------
+eph_probe = 'A' ; or 'B'
+var_label = 'RBSP' + eph_probe + '_EPH_'
+var_label = var_label + ['MLT','L','DIST']
+tplot, var_label=var_label
+
+;----------------------------------------------------------------------
+; PLOT L2SA energy spectra
+;----------------------------------------------------------------------
+tplot, ephem_param + '_' + Bfield_model
+
+
+;***************************
+; Variables Description
+;***************************
+
+; Alpha :             	Pitch Angles [ 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5 ]
+; AscendingNodeTimes : 	Ascending Node Crossing Times on this day
+; AscendingPosGeod :  	Ascending Node Crossing Positions on this day in Geodetic Coords (lat/lon/alt)
+; PerigeeTimes :      	Perigee Times on this day
+; PerigeePosGeod :    	Perigee Positions on this day in Geodetic Coords (lat/lon/alt)
+; ApogeeTimes :       	Apogee Times on this day
+; ApogeePosGeod :    	Apogee Positions on this day in Geodetic Coords (lat/lon/alt)
+; DateTime :          	The date and time in ISO 8601 compliant format
+; Date :              	The date. In YYYMMDD format
+; DOY :               	Ordinal Day of Year
+; UTC :               	Universal Time (Coordinated). In decimal hours
+; JulianDate :        	Julian Date. In decimal days
+; GpsTime :           	Number of SI seconds since 0h Jan 6, 1980 UTC
+; DipoleTiltAngle :   	Angle between Zgsm and Zsm (i.e. between Zgsm and dipole axis direction)
+; InOut :             	Flag indicating whether we are inbound (-1) or outbound (+1)
+; OrbitNumber :       	Orbit Number
+; Rgeo :              	Geocentric Geographic position vector of S/C
+; Rgeod_LatLon :      	Geodetic Geographic Latitude and Longitude of S/C
+; Rgeod_Height :      	Geodetic Geographic Height (Above WGS84 Ellipsoid) of S/C
+; Rgsm :              	Geocentric Solar Magnetospheric position vector of S/C
+; Rsm :               	Geocentric Solar Magnetic position vector of S/C
+; Rgei :              	Geocentric Equatorial Inertial position vector of S/C
+; Rgse :              	Geocentric Solar Ecliptic position vector of S/C
+; CDMAG_MLAT :        	Magnetic Latitude of S/C in Centerted Dipole Coordinates
+; CDMAG_MLON :        	Magnetic Longitude of S/C Centerted Dipole Coordinates
+; CDMAG_MLT :         	Magnetic Local Time of S/C in Centerted Dipole Coordinates
+; CDMAG_R :           	Radial distance of S/C from center of CDMAG coordinate system
+; EDMAG_MLAT :        	Magnetic Latitude of S/C in Eccentric Dipole Coordinates
+; EDMAG_MLON :        	Magnetic Longitude of S/C Eccentric Dipole Coordinates
+; EDMAG_MLT :         	Magnetic Local Time of S/C in Eccentric Dipole Coordinates
+; EDMAG_R :           	Radial distance of S/C from center of EDMAG coordinate system
+; IntModel :          	Internal magnetic field model
+; ExtModel :          	External magnetic field model
+; Kp :                	Kp index value
+; Dst :               	Dst index value
+; Bsc_gsm :           	Model magnetic field vector at S/C (in GSM coords)
+; FieldLineType :     	Description of the type of field line the S/C is on., Can be one of 4 types: LGM_CLOSED      
+;							- FL hits Earth at both ends. LGM_OPEN_N_LOBE - FL is an OPEN field line rooted in the Northern polar cap. 
+;							LGM_OPEN_S_LOBE - FL is an OPEN field line rooted in the Southern polar cap. LGM_OPEN_IMF    
+;							- FL does not hit Earth at eitrher end
+; S_sc_to_pfn :        	Distance between S/C and Northern Footpoint along field line
+; S_sc_to_pfs :        	Distance between S/C and Southern Footpoint along field line
+; S_pfs_to_Bmin :      	Distance between Southern Footpoint and Bmin point along field line
+; S_Bmin_to_sc :      	Distance between Bmin point and S/C along field line (positive if north of Bmin)
+; S_total :            	Total Field Line length (along field line)
+; d2B_ds2 :            	Second derivative of |B| with respect to s (dist along FL) at minimum |B| point
+; Sb0 :                	Value of the 'Sb Integral' for equatorially mirroring particles (not generally zero)
+; RadiusOfCurv :       	Field line radius of curvature at minimum |B| point
+; Pfn_geo :           	Location of Northern Footpoint (in GEO coords)
+; Pfn_gsm :           	Location of Northern Footpoint (in GSM coords)
+; Pfn_geod_LatLon :   	Geodetic Latitude and Longitude of Northern Footpoint
+; Pfn_geod_Height :   	Geodetic Height of Northern Footpoint
+; Pfn_CD_MLAT :       	Magnetic Latitude of Northern Footpoint in Centerted Dipole Coordinates
+; Pfn_CD_MLON :       	Magnetic Longitude of Northern Footpoint Centerted Dipole Coordinates
+; Pfn_CD_MLT :        	Magnetic Local Time of Northern Footpoint in Centerted Dipole Coordinates
+; Pfn_ED_MLAT :       	Magnetic Latitude of Northern Footpoint in Eccentric Dipole Coordinates
+; Pfn_ED_MLON :      	Magnetic Longitude of Northern Footpoint Eccentric Dipole Coordinates
+; Pfn_ED_MLT :        	Magnetic Local Time of Northern Footpoint in Eccentric Dipole Coordinates
+; Bfn_geo :           	Magnetic field vector at Northern Footpoint (in GEO coords)
+; Bfn_gsm :           	Magnetic field vector at Northern Footpoint (in GSM coords)
+; Loss_Cone_Alpha_n :  	Value of Northern Loss Cone angle. asin( sqrt(Bsc/Bfn) ). Bsc is the magntiude of B at spacecraft, 
+;							Bfn is the magnitude of B at the northern footpoint. Note, loss-cone height is taken to be equal 
+;							to the footpoint height which is 100 km above the WGS84 geoid
+; Pfs_geo :           	Location of Southern Footpoint (in GEO coords)
+; Pfs_gsm :           	Location of Southern Footpoint (in GSM coords)
+; Pfs_geod_LatLon :   	Geodetic Latitude and Longitude of Southern Footpoint
+; Pfs_geod_Height :   	Geodetic Height of Southern Footpoint
+; Pfs_CD_MLAT :       	Magnetic Latitude of Southern Footpoint in Centerted Dipole Coordinates
+; Pfs_CD_MLON :       	Magnetic Longitude of Southern Footpoint Centerted Dipole Coordinates
+; Pfs_CD_MLT :        	Magnetic Local Time of Southern Footpoint in Centerted Dipole Coordinates
+; Pfs_ED_MLAT :      	Magnetic Latitude of Southern Footpoint in Eccentric Dipole Coordinates
+; Pfs_ED_MLON :      	Magnetic Longitude of Southern Footpoint Eccentric Dipole Coordinates
+; Pfs_ED_MLT :        	Magnetic Local Time of Southern Footpoint in Eccentric Dipole Coordinates
+; Bfs_geo :           	Magnetic field vector at Southern Footpoint (in GEO coords)
+; Bfs_gsm :           	Magnetic field vector at Southern Footpoint (in GSM coords)
+; Loss_Cone_Alpha_s :  	Value of Southern Loss Cone angle. asin( sqrt(Bsc/Bfs) ). Bsc is the magntiude of B at spacecraft, 
+;							Bfs is the magnitude of B at the southern footpoint. Note, loss-cone height is taken to be equal 
+;							to the footpoint height which is 100 km above the WGS84 geoid
+; Pmin_gsm :          	Location of minimum-|B| point (in GSM coords)
+; Bmin_gsm :          	B-field at minimum-|B| point (in GSM coords)
+; Lsimple :           	Geocentric distance to Bmin point for FL threading vehicle (i.e. |Pmin|)
+; InvLat :            	Invariant latitude of vehicle computed from Lambda=acos(sqrt(1/Lsimple))
+; Lm_eq :             	McIlwain L of an eq. mirroring particle on same FL as vehicle (computed from L=Lm_eq, I=0, and Bm=|Bmin_gsm|, M=M_igrf)
+; InvLat_eq :         	Invariant latitude of vehicle computed from Lambda=acos(sqrt(1.0/Lm_eq))
+; BoverBeq :          	Magntiude of Bsc over magnitude of Bmin
+; MlatFromBoverBeq :  	Dipole latitude where (B/Beq)_dipole == BoverBeq
+; M_used :            	The magnetic dipole moment that was used to convert magnetic flux to L*. In units of nT
+; M_ref :             	The fixed reference magnetic dipole moment (computed from IGRF11 at OUT Jan 1, 2010) 
+;							for converting magnetic flux to L*. In units of nT. ",
+; M_igrf :            	Time-dependant magnetic dipole moment (probably shouldn't be used for converting magnetic flux 
+;							to L*, but it sometimes is). In units of nT
+; Hmin :              	Minimum geodetic altitude of the particle as it bounces and drifts on its drift shell
+; Hmin_GeodLat :       	Geodetic Latitude of Hmin point
+; Hmin_GeodLon :       	Geodetic Longitude of Hmin point
+; Lstar :             	Generalized Roederer L-shell value (also known as L*)
+; DriftShellType :    	Type of Drift Shell (e.g. 1=CLOSED, 2=CLOSED_SHABANSKY, 3=OPEN, 4=OPEN_SHABANSKY)",
+; L :                 	McIlwain L-shell value
+; Bm :                	Magnetic field strength at mirror points for each pitch angle
+; I :                 	Integral invariant for each pitch angle
+; K :                 	Second Invariant ( I*sqrt(Bm) ) for each pitch angle
+; Sb :                	Sb Integral for each pitch angle
+; Tb :                	Bounce period for 1 MeV electrons
+; Kappa :             	Kappa parameter for 1MeV electrons -- sqrt( (Minimum Radius of Curvature)/Maximum gyroradius)) 
+;							(see Büchner, J., and L. M. Zelenyi (1989), Regular and Chaotic Charged Particle Motion in Magnetotaillike Field Reversals, 
+;							1. Basic Theory of Trapped Motion, J. Geophys. Res., 94(A9), 11,821-11,842, doi:10.1029/JA094iA09p11821
+; Spacecraft :        	Spacecraft identifier
+; File :               	Description of file contents. The format for ElapsedTime is DDD:HH:MM:SS
+; Misc :               	Various parameters used in the calculations
