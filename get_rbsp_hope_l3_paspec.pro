@@ -1,421 +1,443 @@
 ;+
-; NAME: get_hope_l3_pa
+; NAME: get_rbsp_hope_l3_paspec
 ;
-; PURPOSE: To read the HOPE-L3_PA cdf files and reconstruct the CODIF 
-;          equivalent 3D distribution that can be fed into the CODIF routines
-;          in order to produce 3D based products
+; PURPOSE: To read the HOPE-L3_PA cdf files and create pa spectra for a particular energy range
 ;
-; INPUT: sat --> 1 or 2 for probes a or b
+; INPUT: probe_str --> 'A' or 'B' for probes a or b
 ;
 ; KEYWORDS:
 ;        species --> 0,1,2 or 3 for species H+, e-, He+, O+
-;        name --> 
-;        distribution --> 'Original' : Use the original, pitch angle gyrophase resolution
-;                         'Gyrotropic' ; Modify original distribution to reflect gyrotropy
-;                         'Isotropic' ; Modify original distribution to reflect isotropy
-;        path --> Data file path if not the one defined by the RBSP_A_HOPE_PA or 
+;        units --> 'DIFF FLUX' or 'EFLUX'
+;        energy_units_in_flux --> 'eV' or 'keV' for 'DIFF FLUX' units only.
+;        energy_range --> the energy range used for the pitch angle spectra calculation in eV [er_s, er_e]
+;        energy_bins_range --> the range of the energy bins used for the pitch angle spectra calculation [eb_s, eb_e]
+;        path --> Data file path if not the one defined by the RBSP_A_HOPE_PA or
 ;                 RBSP_B_HOPE_PA environment variables
 ;        fln --> Filename if not the default
 ;        pa_weighting --> Apply pitch angle weighting (for testing purposes)
 ;
 ; CREATED by: C.G. Mouikis (11/2013)
 ;
-; MODIFICATION HISTORY:
+; MODifICATION HISTORY:
+;  6/23/2023 - (cgm): Updated to properly handle EFLUX units
 ;
 ; FILE SOURCE: http://www.rbsp-ect.lanl.gov/data_pub/rbspa/hope/level3/pitchangle/ or
 ;              http://www.rbsp-ect.lanl.gov/data_pub/rbspb/hope/level3/pitchangle/
 ;
-; ATTENTION: 
+; ATTENTION:
 ;            - The file name specification is: 'rbsp' + probe_str + '_ect-hope-PA*-L3_' + date + '*.cdf'
-;            which makes does not restrict which file version (3D or 4D) is selected. So, if both file types 
+;            which makes does not restrict which file version (3D or 4D) is selected. So, if both file types
 ;            for a particular date exist in the sape directory, it becomes random which one is chosen. This
 ;            can be done by specifying the file name using the "fln" keyword
 ;
-;            - Also, if two data files exist in the path directory with different version numbers the one with 
+;            - Also, if two data files exist in the path directory with different version numbers the one with
 ;            the higher version number is selected
 ;
-; CATEGORY: 
+; CATEGORY:
 ;           RBSP, HOPE, Core
 ;
 ; @author Chris Mouikis
 ;
 ;-
-PRO get_rbsp_hope_l3_paspec, $
+pro get_rbsp_hope_l3_paspec, $
   probe_str, $
   species, $
+  units, $
   energy_range, $
-  energy_bins_range=energy_bins_range, $
-  aux_data=aux_data, $
-  eph_data=eph_data, $
-  name=name, $
-  path=path, $
-  fln=fln
+  energy_units_in_flux = energy_units_in_flux, $
+  energy_bins_range = energy_bins_range, $
+  aux_data = aux_data, $
+  eph_data = eph_data, $
+  name = name, $
+  path = path, $
+  fln = fln
+  
 
-  COMMON get_error, get_err_no, get_err_msg, default_verbose  
+  common get_error, get_err_no, get_err_msg, default_verbose
 
-  ;>>--------------------------------------------------------------------
+  ; --------------------------------------------------------------------
   ; Find data files to read
-  ;----------------------------------------------------------------------
+  ; ---------------------------------------------------------------------
+  ; Jing: set energy bin constant:
+  RBSP_ENERGY_BIN = [51767.680, 44428.695, 38130.121, 32724.498, 28085.268, 24103.668, 20686.559, 17753.877, 15236.896, 13076.798, 11222.936, 9631.8994, 8266.4062, 7094.5161, 6088.7222, 5225.5273, 4484.7422, 3848.9187, 3303.2842, 2834.9644, 2433.0547, 2088.1287, 1792.0959, 1538.0620, 1319.9771, 1132.8461, 972.23694, 834.42133, 716.16302, 614.57758, 527.48431, 452.70224, 388.54303, 333.45901, 286.18381, 245.59184, 210.76859, 180.86984, 155.26245, 133.24290, 114.31875, 98.138245, 84.208954, 72.319794, 62.048695, 53.254951, 45.727501, 39.184952, 33.627300, 28.913851, 24.763199, 21.245699, 18.290998, 15.688050, 13.436850, 11.537399, 9.9193497, 8.5123501, 7.3163996, 6.2611499, 5.3465996, 4.6431003, 3.9396000, 3.3767998, 2.9546998, 2.5326002, 2.1808500, 1.8290999, 1.5476999, 1.3366499, 1.1959500, 0.98490000]
+
+  RBSP_DENERGY_BIN = [3882.5762, 3332.1523, 2859.7593, 2454.3374, 2106.3953, 1807.7751, 1551.4919, 1331.5408, 1142.7672, 980.75989, 841.72021, 722.39246, 619.98047, 532.08875, 456.65417, 391.91458, 336.35568, 288.66891, 247.74632, 212.62233, 182.47911, 156.60965, 134.40720, 115.35465, 98.998283, 84.963455, 72.917770, 62.581600, 53.712231, 46.093319, 39.561325, 33.952671, 29.140728, 25.009428, 21.463787, 18.419390, 15.807645, 13.565239, 11.644684, 9.9932184, 8.5739069, 7.3603687, 6.3156719, 5.4239845, 4.6536522, 3.9941216, 3.4295628, 2.9388714, 2.5220475, 2.1685388, 1.8572400, 1.5934275, 1.3718250, 1.1766038, 1.0077637, 0.86530501, 0.74395126, 0.63842630, 0.54873002, 0.46958625, 0.40099499, 0.34823254, 0.29547000, 0.25325999, 0.22160248, 0.18994503, 0.16356376, 0.13718250, 0.11607750, 0.10024875, 0.089696258, 0.073867500]
+  nenergybins = n_elements(RBSP_ENERGY_BIN)
+
   ; Get data path
-  IF ~KEYWORD_SET(path) THEN path2 ='' ELSE path2 = path
-  IF path2 EQ '' THEN path2 = GETENV('RBSP_' + probe_str + '_HOPE_PA')
+  if ~keyword_set(path) then path2 = '' else path2 = path
+  if path2 eq '' then path2 = getenv('RBSP_' + probe_str + '_HOPE_PA')
 
   ; Find data file with manually entered filename
-  IF NOT KEYWORD_SET(fln)  THEN BEGIN
-    fln2 =''
-  ENDIF ELSE BEGIN
+  if not keyword_set(fln) then begin
+    fln2 = ''
+  endif else begin
     fln2 = fln
-    files_found = FILE_SEARCH(path2 + '/' + fln2, count=ifln)
-    IF ifln LE 0 THEN BEGIN
+    files_found = file_search(path2 + '/' + fln2, count = ifln)
+    if ifln le 0 then begin
       get_err_no = 1
       get_err_msg = 'File ' + fln + ' not found'
-      MESSAGE, get_err_msg, /CONTINUE
-      RETURN
-    ENDIF
-  ENDELSE
+      message, get_err_msg, /continue
+      return
+    endif
+  endelse
 
-  ; Find data files. 
-  ; Filenames are reconstructed using the timespan set 
-  IF fln2 EQ '' THEN BEGIN
-
+  ; Find data files.
+  ; Filenames are reconstructed using the timespan set
+  if fln2 eq '' then begin
     ; Find days that correspond to time interval selected
     get_timespan, time_interval
-  
-    t_s=gettime(time_interval(0)) ; start time in tplot-time
-    t_e=gettime(time_interval(1)) ; end time in tplot-time  
-  
-    t_s_str = time_struct(t_s)    ; start_time tplot time structure
-    t_e_str = time_struct(t_e)    ; end_time tplot time structure
-  
-    mjd_s = JULDAY(t_s_str.month, t_s_str.date, t_s_str.year) ; start julian day
-    mjd_e = JULDAY(t_e_str.month, t_e_str.date, t_e_str.year) ; end julian day
-  
+
+    t_s = gettime(time_interval[0]) ; start time in tplot-time
+    t_e = gettime(time_interval[1]) ; end time in tplot-time
+
+    t_s_str = time_struct(t_s) ; start_time tplot time structure
+    t_e_str = time_struct(t_e) ; end_time tplot time structure
+
+    mjd_s = julday(t_s_str.month, t_s_str.date, t_s_str.year) ; start julian day
+    mjd_e = julday(t_e_str.month, t_e_str.date, t_e_str.year) ; end julian day
+
     ndys = (mjd_e - mjd_s) + 1 ; number of days to be loaded
 
-    ;Last day is not included if hour=min=sec=0
-    IF t_e_str.hour EQ 0 AND t_e_str.min EQ 0 AND t_e_str.sec EQ 0 THEN $
+    ; Last day is not included if hour=min=sec=0
+    if t_e_str.hour eq 0 and t_e_str.min eq 0 and t_e_str.sec eq 0 then $
       ndys = ndys - 1
-    
+
     ; Reconstruct date strings and search for the corresponding files
     files_found = ''
-    FOR indys = 0, ndys-1 DO BEGIN
+    for indys = 0, ndys - 1 do begin
+      date = time_double(strmid(time_string(time_interval[0]), 0, 4) + $
+        strmid(time_string(time_interval[0]), 5, 2) + $
+        strmid(time_string(time_interval[0]), 8, 2)) + $
+        indys * 86400.
 
-      date = time_double(STRMID(time_string(time_interval(0)), 0, 4) + $
-                          STRMID(time_string(time_interval(0)), 5, 2) + $
-                          STRMID(time_string(time_interval(0)), 8, 2)) + $
-                          indys * 86400.
+      date_str = strmid(time_string(date), 0, 4) + $
+        strmid(time_string(date), 5, 2) + $
+        strmid(time_string(date), 8, 2)
 
-      date_str = STRMID(time_string(date), 0, 4) + $
-                  STRMID(time_string(date), 5, 2) + $
-                  STRMID(time_string(date), 8, 2)
+      fln2 = 'rbsp' + strlowcase(probe_str) + '*_ect-hope-*_' + date_str + '*.cdf'
 
-      fln2 = 'rbsp' + STRLOWCASE(probe_str) + '*_ect-hope-*_' + date_str + '*.cdf'
-
-      path_fln = FILE_SEARCH(path2 + '/' + fln2, count=ifln)
-      ; If more than one files for the same date are found the last one
+      path_fln = file_search(path2 + '/' + fln2, count = ifln)
+      ; if more than one files for the same date are found the last one
       ; in the list is selected. It is assumed that this will be the most
       ; recent one if the version numbers are properly incremented.
-      IF ifln GT 0 THEN BEGIN
-        files_found = [files_found, path_fln(ifln-1)]
-      ENDIF
-    ENDFOR
+      if ifln gt 0 then begin
+        files_found = [files_found, path_fln(ifln - 1)]
+      endif
+    endfor
 
-    IF N_ELEMENTS(files_found)-1 EQ 0 THEN BEGIN
+    if n_elements(files_found) - 1 eq 0 then begin
       get_err_no = 1
       get_err_msg = 'Data files not found for time interval'
-      MESSAGE, get_err_msg, /CONTINUE
-      RETURN
-    ENDIF ELSE BEGIN
-      files_found = files_found(1:N_ELEMENTS(files_found)-1)
-    ENDELSE
-      
- ENDIF 
-  ;<<--------------------------------------------------------------------
+      message, get_err_msg, /continue
+      return
+    endif else begin
+      files_found = files_found[1 : n_elements(files_found) - 1]
+    endelse
+  endif
+  ; <<--------------------------------------------------------------------
 
-  ;>>--------------------------------------------------------------------
+  ; >>--------------------------------------------------------------------
   ; Open and read CDF files
-  ;----------------------------------------------------------------------
+  ; ----------------------------------------------------------------------
   ; Determine the variables to be read from the CDF files
-  CASE species OF
-     0: BEGIN
-          var2get = ['FPDU',  'Epoch_Ion', 'PITCH_ANGLE', 'HOPE_ENERGY_Ion', 'ENERGY_Ion_DELTA']
-          IF KEYWORD_SET(eph_data) THEN BEGIN
-            var2get = [var2get, ['POSITION_ION', 'L_ION', 'L_STAR_ION', 'MLT_ION']]
-          ENDIF
-          IF KEYWORD_SET(aux_data) THEN BEGIN
-            var2get = [var2get, ['B_CALC_ION', 'B_EQ_ION', 'I_ION']]
-          ENDIF
-        END
-     1: BEGIN
-          var2get = ['FEDU',  'Epoch_Ele', 'PITCH_ANGLE', 'HOPE_ENERGY_Ele', 'ENERGY_Ele_DELTA']
-          IF KEYWORD_SET(eph_data) THEN BEGIN
-            var2get = [var2get, 'Position_Ele', 'L_Ele', 'L_star_Ele', 'MLT_Ele']
-          ENDIF
-          IF KEYWORD_SET(aux_data) THEN BEGIN
-            var2get = [var2get, ['B_CALC_ELE', 'B_EQ_ELE', 'I_ELE']]
-          ENDIF
-        END
-     2: BEGIN
-          var2get = ['FHEDU', 'Epoch_Ion', 'PITCH_ANGLE', 'HOPE_ENERGY_Ion', 'ENERGY_Ion_DELTA']
-          IF KEYWORD_SET(eph_data) THEN BEGIN
-            var2get = [var2get, 'Position_Ion', 'L_Ion', 'L_star_Ion', 'MLT_Ion']
-          ENDIF
-          IF KEYWORD_SET(aux_data) THEN BEGIN
-            var2get = [var2get, ['B_CALC_ION', 'B_EQ_ION', 'I_ION']]
-          ENDIF
-        END
-     3: BEGIN
-          var2get = ['FODU',  'Epoch_Ion', 'PITCH_ANGLE', 'HOPE_ENERGY_Ion', 'ENERGY_Ion_DELTA']
-          IF KEYWORD_SET(eph_data) THEN BEGIN
-            var2get = [var2get, 'Position_Ion', 'L_Ion', 'L_star_Ion', 'MLT_Ion']
-          ENDIF
-          IF KEYWORD_SET(aux_data) THEN BEGIN
-            var2get = [var2get, ['B_CALC_ION', 'B_EQ_ION', 'I_ION']]
-          ENDIF
-        END
-  ENDCASE
+  case species of
+    0: begin
+      var2get = ['FPDU', 'Epoch_Ion', 'PITCH_ANGLE', 'HOPE_ENERGY_Ion', 'ENERGY_Ion_DELTA']
+      if keyword_set(eph_data) then begin
+        var2get = [var2get, ['POSITION_ION', 'L_ION', 'L_STAR_ION', 'MLT_ION']]
+      endif
+      if keyword_set(aux_data) then begin
+        var2get = [var2get, ['B_CALC_ION', 'B_EQ_ION', 'I_ION']]
+      endif
+    end
+    1: begin
+      var2get = ['FEDU', 'Epoch_Ele', 'PITCH_ANGLE', 'HOPE_ENERGY_Ele', 'ENERGY_Ele_DELTA']
+      if keyword_set(eph_data) then begin
+        var2get = [var2get, 'Position_Ele', 'L_Ele', 'L_star_Ele', 'MLT_Ele']
+      endif
+      if keyword_set(aux_data) then begin
+        var2get = [var2get, ['B_CALC_ELE', 'B_EQ_ELE', 'I_ELE']]
+      endif
+    end
+    2: begin
+      var2get = ['FHEDU', 'Epoch_Ion', 'PITCH_ANGLE', 'HOPE_ENERGY_Ion', 'ENERGY_Ion_DELTA']
+      if keyword_set(eph_data) then begin
+        var2get = [var2get, 'Position_Ion', 'L_Ion', 'L_star_Ion', 'MLT_Ion']
+      endif
+      if keyword_set(aux_data) then begin
+        var2get = [var2get, ['B_CALC_ION', 'B_EQ_ION', 'I_ION']]
+      endif
+    end
+    3: begin
+      var2get = ['FODU', 'Epoch_Ion', 'PITCH_ANGLE', 'HOPE_ENERGY_Ion', 'ENERGY_Ion_DELTA']
+      if keyword_set(eph_data) then begin
+        var2get = [var2get, 'Position_Ion', 'L_Ion', 'L_star_Ion', 'MLT_Ion']
+      endif
+      if keyword_set(aux_data) then begin
+        var2get = [var2get, ['B_CALC_ION', 'B_EQ_ION', 'I_ION']]
+      endif
+    end
+  endcase
 
   ; Loop through the CDF files found and read the data
   append_flag = 0
-  FOR iday = 0, N_ELEMENTS(files_found)-1 DO BEGIN ; Loop over daily files
-  
-    ds = get_cdf_data(file=files_found(iday) , var2get=var2get)
+  for iday = 0, n_elements(files_found) - 1 do begin ; Loop over daily files
 
-  ; -------------------------------------------------------------------
-  ; Get data
-  ; -------------------------------------------------------------------
+    ds = get_cdf_data(file = files_found(iday), var2get = var2get)
+
+    ; -------------------------------------------------------------------
+    ; Get data
+    ; Default flux units: 's!E-1!Ncm!E-2!Nster!E-1!NkeV!E-1!N'
+    ; Default energy units: 'eV'
+    ; -------------------------------------------------------------------
     ; Read Epoch Time
-    IF species EQ 1 THEN BEGIN ; epoch time
-      t_ele = REFORM(ds.epoch_ele.data)
-      t_str = time_double(t_ele, /EPOCH)
-    ENDIF ELSE BEGIN
-      t_ion = REFORM(ds.epoch_ion.data)
-      t_str = time_double(t_ion, /EPOCH)
-    ENDELSE ; epoch time
+    if species eq 1 then begin ; epoch time
+      t_ele = reform(ds.epoch_ele.data)
+      t_str = time_double(t_ele, /epoch)
+    endif else begin
+      t_ion = reform(ds.epoch_ion.data)
+      t_str = time_double(t_ion, /epoch)
+    endelse ; epoch time
 
     ; Limit data arrays to time interval requested
     get_timespan, tt
-    itime = WHERE(t_str GE tt(0) AND t_str LE tt(1), c_itime)
-    IF c_itime LE 1 THEN BEGIN
+    itime = where(t_str ge tt[0] and t_str le tt[1], c_itime)
+    if c_itime le 1 then begin
       get_err_no = 1
       get_err_msg = 'Less than 2 data points found for time interval'
-      MESSAGE, get_err_msg, /CONTINUE
-      RETURN
-    ENDIF
+      message, get_err_msg, /continue
+      return
+    endif
 
     time = t_str[itime]
 
     ; Set energy and pa arrays
     pa_data = ds.pitch_angle.data
-    IF species EQ 1 THEN BEGIN
-      en_data = REVERSE(ds.hope_energy_ele.data[*,itime])
-      en_delta_data = REVERSE(ds.energy_ele_delta.data[*,itime])
-    ENDIF ELSE BEGIN
-      en_data = REVERSE(ds.hope_energy_ion.data(*,itime))
-      en_delta_data = REVERSE(ds.energy_ion_delta.data[*,itime])
-    ENDELSE
-      
-    e_data = en_data
+    if species eq 1 then begin
+      en_data = reverse(ds.hope_energy_ele.data[*, itime]) ; order energy bins from high to low
+      en_delta_data = reverse(ds.energy_ele_delta.data[*, itime]) ; order energy bins from high to low
+    endif else begin
+      en_data = reverse(ds.hope_energy_ion.data[*, itime]) ; order energy bins from high to low
+      en_delta_data = reverse(ds.energy_ion_delta.data[*, itime]) ; order energy bins from high to low
+    endelse
 
-    CASE species OF
-      0: BEGIN
-        data_or = REVERSE(ds.fpdu.data[*,*,itime],1)
-      END
-      1: BEGIN
-        data_or = REVERSE(ds.fedu.data[*,*,itime],1)
-      END
-      2: BEGIN
-        data_or = REVERSE(ds.fhedu.data[*,*,itime],1)
-      END
-      3: BEGIN
-        data_or = REVERSE(ds.fodu.data[*,*,itime],1)
-      END
-    ENDCASE
+    ; --------------- Jing: remove all energy bins with min 24 eV.  -----------
 
-    fill_index = WHERE(data_or EQ -1.00000e+31)
-    data_or[fill_index] = !values.f_nan
+    index_invalid = where(en_data[nenergybins - 1, *] gt 20, ct_invalid)
+    if ct_invalid gt 0 then begin
+      en_data[*, index_invalid] = cmreplicate(RBSP_ENERGY_BIN, ct_invalid)
+      en_delta_data[*, index_invalid] = cmreplicate(RBSP_DENERGY_BIN, ct_invalid)
+    endif
+    ; --------------- Jing: remove all energy bins with min 24 eV.  -----------
 
-    en_data_middle = REFORM(en_data(*,0))
-    en_data_l = REFORM(en_data(*,0)) - (REFORM(en_delta_data(*,0)) / 2.)
-    en_data_u = REFORM(en_data(*,0)) + (REFORM(en_delta_data(*,0)) / 2.)
+    en_data_middle = reform(en_data[*, 0])
 
-    IF KEYWORD_SET(energy_bins_range) THEN BEGIN
-      IF energy_bins_range[0] LE energy_bins_range[1] THEN BEGIN
-        en_ind_array = INDGEN(energy_bins_range[1] - energy_bins_range[0] + 1) + energy_bins_range[0]
-      ENDIF ELSE BEGIN
-        en_ind_array = INDGEN(energy_bins_range[0] - energy_bins_range[1] + 1) + energy_bins_range[1]
-      ENDELSE
-      energy_range[0] = en_data_middle(en_ind_array[N_ELEMENTS(en_ind_array)-1])
-      energy_range[1] = en_data_middle(en_ind_array[0])
-    ENDIF ELSE BEGIN
-      en_start = MIN(ABS(en_data_l - energy_range(0)), en_index_l)
-      en_end   = MIN(ABS(en_data_u - energy_range(1)), en_index_u)
-      en_ind_array = INDGEN((en_index_l - en_index_u + 1)) + en_index_u
-      energy_range[0] = en_data_middle(en_ind_array[N_ELEMENTS(en_ind_array)-1])
-      energy_range[1] = en_data_middle(en_ind_array[0])
-    ENDELSE
+    en_data_l = reform(en_data[*, 0]) - (reform(en_delta_data[*, 0]) / 2.)
+    en_data_u = reform(en_data[*, 0]) + (reform(en_delta_data[*, 0]) / 2.)
 
-;Jing
-;    data_y = data_or
-;    data_y = REFORM(MEAN(data_y(en_ind_array,*,*), DIM=1, /NaN))
-     daty_avg_int = data_or
-     daty_avg_int = REFORM(MEAN( daty_avg_int(en_ind_array,*,*), DIM=1, /NaN))
-     ifill = WHERE( daty_avg_int EQ -1.00000e+31, c_ifill) 
-     IF c_ifill GT 0 THEN  daty_avg_int(ifill) = !VALUES.F_NAN     
-     
-;    ifill = WHERE(data_y EQ -1.00000e+31, c_ifill) 
-;    IF c_ifill GT 0 THEN BEGIN
-;       data_y(ifill) = !VALUES.F_NAN
-;    ENDIF
+    if keyword_set(energy_bins_range) then begin
+      if energy_bins_range[0] le energy_bins_range[1] then begin
+        en_ind_array = indgen(energy_bins_range[1] - energy_bins_range[0] + 1) + energy_bins_range[0]
+      endif else begin
+        en_ind_array = indgen(energy_bins_range[0] - energy_bins_range[1] + 1) + energy_bins_range[1]
+      endelse
+      energy_range[0] = en_data_middle[en_ind_array[n_elements(en_ind_array) - 1]]
+      energy_range[1] = en_data_middle[en_ind_array[0]]
+    endif else begin
+      en_start = min(abs(en_data_l - energy_range[0]), en_index_l)
+      en_end = min(abs(en_data_u - energy_range[1]), en_index_u)
+      en_ind_array = indgen((en_index_l - en_index_u + 1)) + en_index_u
+      energy_range[0] = en_data_middle[en_ind_array[n_elements(en_ind_array) - 1]]
+      energy_range[1] = en_data_middle[en_ind_array[0]]
+    endelse
+
+    case species of
+      0: begin
+        data_or = reverse(ds.fpdu.data[*, *, itime], 1)
+      end
+      1: begin
+        data_or = reverse(ds.fedu.data[*, *, itime], 1)
+      end
+      2: begin
+        data_or = reverse(ds.fhedu.data[*, *, itime], 1)
+      end
+      3: begin
+        data_or = reverse(ds.fodu.data[*, *, itime], 1)
+      end
+    endcase
+
+    fill_index = where(data_or eq -1.00000e+31, c_ifill)
+    if c_ifill gt 0 then begin
+      data_or[fill_index] = !values.f_nan
+    endif
+    ; --------------- Jing: remove all data_or with min 24 eV.  -----------
+    index_invalid = where(en_data[nenergybins - 1, *] gt 20, ct_invalid)
+
+    if ct_invalid gt 0 then begin
+      data_or[*, *, index_invalid] = !values.f_nan
+    endif
+    ; --------------- Jing: remove all data_or with min 24 eV.  -----------
+
+    ; Convert to EFLUX units
+    data_y = data_or
+    npa = n_elements(data_or[0, *, 0])
+    if units eq 'EFLUX' then begin
+      ; Since the Default flux units: 's!E-1!Ncm!E-2!Nster!E-1!NkeV!E-1!N'
+      ; multiply by the energy array wich is in eV and therefore devide by 1000
+      for ipa = 0, npa - 1 do data_y[*, ipa, *] = data_y[*, ipa, *] * (en_data / 1000.)
+    endif
+
+    ; Convert to eV in flux units
+    if units eq 'DIFF FLUX' then begin
+      if energy_units_in_flux eq 'eV' then data_y = data_y / 1000.
+    endif
+
+    ; average over selected energies
+    data_y = transpose(reform(mean(data_y[en_ind_array, *, *], dim = 1, /nan)))
+    e_data = transpose(en_data) ; to follow the tplot variable convention
 
     ; Get ephemeris parameters
-    IF KEYWORD_SET(eph_data) THEN BEGIN
-      IF SPECIES EQ 1 THEN BEGIN
-        dist_data = SQRT(REFORM(ds.position_ele.data(0,*)^2) + $
-            REFORM(ds.position_ele.data(1,*)^2) + $
-            REFORM(ds.position_ele.data(2,*)^2)) / 6371.0
-        l_data = REFORM(ds.l_ele.data)
-        l_star_data = REFORM(ds.l_star_ele.data)
-        mlt_data = REFORM(ds.mlt_ele.data)
-      ENDIF ELSE BEGIN
-        dist_data = SQRT(REFORM(ds.position_ion.data(0,*)^2) + $
-            REFORM(ds.position_ion.data(1,*)^2) + $
-            REFORM(ds.position_ion.data(2,*)^2)) / 6371.0
-        l_data = REFORM(ds.l_ion.data)
-        l_star_data = REFORM(ds.l_star_ion.data)
-        mlt_data = REFORM(ds.mlt_ion.data)
-      ENDELSE
-    ENDIF
+    if keyword_set(eph_data) then begin
+      if species eq 1 then begin
+        dist_data = sqrt(reform(ds.position_ele.data[0, itime] ^ 2) + $
+          reform(ds.position_ele.data[1, itime] ^ 2) + $
+          reform(ds.position_ele.data[2, itime] ^ 2)) / 6371.0
+        l_data = reform(ds.l_ele.data[itime])
+        l_star_data = reform(ds.l_star_ele.data[itime])
+        mlt_data = reform(ds.mlt_ele.data[itime])
+      endif else begin
+        dist_data = sqrt(reform(ds.position_ion.data[0, itime] ^ 2) + $
+          reform(ds.position_ion.data[1, itime] ^ 2) + $
+          reform(ds.position_ion.data[2, itime] ^ 2)) / 6371.0
+        l_data = reform(ds.l_ion.data[itime])
+        l_star_data = reform(ds.l_star_ion.data[itime])
+        mlt_data = reform(ds.mlt_ion.data[itime])
+      endelse
+    endif
 
     ; Get auxiliary parameters
-    IF KEYWORD_SET(aux_data) THEN BEGIN
-      IF SPECIES EQ 1 THEN BEGIN
-        b_calc_data = REFORM(ds.b_calc_ele.data)
-        b_eq_data = REFORM(ds.b_eq_ele.data)
-        i_data = REFORM(ds.i_ele.data)
-      ENDIF ELSE BEGIN
-        b_calc_data = REFORM(ds.b_calc_ion.data)
-        b_eq_data = REFORM(ds.b_eq_ion.data)
-        i_data = REFORM(ds.i_ion.data)
-      ENDELSE
-    ENDIF
-; Jing
-;    daty_avg_int = data_y
-    IF append_flag EQ 0 THEN BEGIN ; append_flag
-      data_x = t_str
-      data_y = TRANSPOSE(daty_avg_int)
-      data_v = TRANSPOSE(e_data)
-      IF KEYWORD_SET(eph_data) THEN BEGIN
+    if keyword_set(aux_data) then begin
+      if species eq 1 then begin
+        b_calc_data = reform(ds.b_calc_ele.data[itime])
+        b_eq_data = reform(ds.b_eq_ele.data[itime])
+        i_data = reform(ds.i_ele.data[itime])
+      endif else begin
+        b_calc_data = reform(ds.b_calc_ion.data[itime])
+        b_eq_data = reform(ds.b_eq_ion.data[itime])
+        i_data = reform(ds.i_ion.data[itime])
+      endelse
+    endif
+
+    if append_flag eq 0 then begin ; append_flag
+      data_x = time
+      data_yy = data_y
+      data_v = e_data
+      if keyword_set(eph_data) then begin
         data_dist = dist_data
         data_L = l_data
         data_l_star = l_star_data
         data_mlt = mlt_data
-      ENDIF
-      IF KEYWORD_SET(aux_data) THEN BEGIN
+      endif
+      if keyword_set(aux_data) then begin
         data_b_calc = b_calc_data
         data_b_eq = b_eq_data
         data_i = i_data
-      ENDIF
+      endif
 
       append_flag = 1
-    ENDIF ELSE BEGIN
-        data_x  = [data_x, t_str]
-        data_y  = [data_y, TRANSPOSE(daty_avg_int)]
-        data_v  = [data_v, TRANSPOSE(e_data)]
-        IF KEYWORD_SET(eph_data) THEN BEGIN
-        data_dist   = [data_dist, dist_data]
-        data_l      = [data_l, l_data]
+    endif else begin
+      data_x = [data_x, time]
+      data_yy = [data_yy, data_y]
+      data_v = [data_v, e_data]
+      if keyword_set(eph_data) then begin
+        data_dist = [data_dist, dist_data]
+        data_L = [data_L, l_data]
         data_l_star = [data_l_star, l_star_data]
-        data_mlt    = [data_mlt, mlt_data]
-      ENDIF
-      IF KEYWORD_SET(aux_data) THEN BEGIN
+        data_mlt = [data_mlt, mlt_data]
+      endif
+      if keyword_set(aux_data) then begin
         data_b_calc = [data_b_calc, b_calc_data]
-        data_b_eq   = [data_b_eq, b_eq_data]
-        data_i      = [data_i, i_data]
-      ENDIF
-    ENDELSE ; append_flag
+        data_b_eq = [data_b_eq, b_eq_data]
+        data_i = [data_i, i_data]
+      endif
+    endelse ; append_flag
+  endfor ; Loop over daily files
 
-  ENDFOR ; Loop over daily files
-
-  ifill = WHERE(data_y EQ -1.00000e+31, c_ifill) 
-  IF c_ifill GT 0 THEN BEGIN
-     data_y(ifill) = !VALUES.F_NAN
-  ENDIF
-
-  ;>>--------------------------------------------------------------------
+  ; >>--------------------------------------------------------------------
   ; Create tplot variables
-  ;----------------------------------------------------------------------
+  ; ----------------------------------------------------------------------
   species_str = ['H!U+!N', 'e!U-!N', 'He!U+!N', 'O!U+!N']
 
-  flux_units = 'DIFF FLUX'
-  IF ~KEYWORD_SET(name) THEN BEGIN
+  if ~keyword_set(name) then begin
     name = 'RBSP' + probe_str + $
-           '_HOPE_l3_paspec_sp' + STRING(species, FORMAT='(i1.1)') + $
-           '_' + STRUPCASE(STRCOMPRESS(flux_units,/REMOVE_ALL)) + $
-           '_' + STRING(energy_range(0), FORMAT='(i5.5)') + '_' + STRING(energy_range(1), FORMAT='(i5.5)')
-  ENDIF
+      '_HOPE_l3_paspec_sp' + string(species, format = '(i1.1)') + $
+      '_' + strupcase(strcompress(units, /remove_all)) + $
+      '_' + string(energy_range[0], format = '(i5.5)') + '_' + string(energy_range[1], format = '(i5.5)')
+  endif
 
   store_data, name, $
-      data={x:data_x, y:data_y, v:pa_data}, $
-      dlim={spec:1, no_interp:1, zlog:1, ylog:0}
+    data = {x: data_x, y: data_yy, v: pa_data, $
+      flux_units: units, en_units: 'eV', flux_en_units: energy_units_in_flux, $
+      species: species}, $
+    dlim = {panel_size: 2, ylog: 0, zlog: 1, spec: 1, no_interp: 1}
 
-  IF KEYWORD_SET(eph_data) THEN BEGIN
-    store_data, name + '_DIST', data = {x:data_x, y:data_dist}, $
-     dlim={panel_size:1, ytitle:'Dist'}
-    store_data, name + '_L', data = {x:data_x, y:data_l}, $
-     dlim={panel_size:1, ytitle:'L'}
-    store_data, name + '_L_STAR', data = {x:data_x, y:data_l_star}, $
-     dlim={panel_size:1, ytitle:'L*'}
-    store_data, name + '_MLT', data = {x:data_x, y:data_mlt}, $
-     dlim={panel_size:1, ytitle:'MLT'}
-
-    ylim, name + '_DIST', 0, 8
-    ylim, name + '_L', 0, 8
-    ylim, name + '_L_STAR', 0, 8
-    ylim, name + '_MLT', 0, 24
-  ENDIF
-
-  IF KEYWORD_SET(aux_data) THEN BEGIN
-    store_data, name + '_B_CALC', data = {x:data_x, y:data_b_calc}, $
-     dlim={panel_size:1, ytitle:'B model'}
-    store_data, name + '_B_EQ', data = {x:data_x, y:data_b_eq}, $
-     dlim={panel_size:1, ytitle:'B eq model'}
-    store_data, name + '_I', data = {x:data_x, y:data_i}, $
-     dlim={panel_size:1, ytitle:'I (bounce)'}
-
-    ylim, name + '_B_CALC', 0, 400
-    ylim, name + '_B_EQ', 0, 400
-    ylim, name + '_I', 0, 5
-  ENDIF
-
-  IF KEYWORD_SET(eph_data) THEN BEGIN
-    store_data, name + '_DIST', data = {x:data_x, y:data_dist}, $
-     dlim={panel_size:1, ytitle:'Dist'}
-    store_data, name + '_L', data = {x:data_x, y:data_l}, $
-     dlim={panel_size:1, ytitle:'L'}
-    store_data, name + '_L_STAR', data = {x:data_x, y:data_l_star}, $
-     dlim={panel_size:1, ytitle:'L*'}
-    store_data, name + '_MLT', data = {x:data_x, y:data_mlt}, $
-     dlim={panel_size:1, ytitle:'MLT'}
+  if keyword_set(eph_data) then begin
+    store_data, name + '_DIST', data = {x: data_x, y: data_dist}, $
+      dlim = {panel_size: 1, ytitle: 'Dist'}
+    store_data, name + '_L', data = {x: data_x, y: data_L}, $
+      dlim = {panel_size: 1, ytitle: 'L'}
+    store_data, name + '_L_STAR', data = {x: data_x, y: data_l_star}, $
+      dlim = {panel_size: 1, ytitle: 'L*'}
+    store_data, name + '_MLT', data = {x: data_x, y: data_mlt}, $
+      dlim = {panel_size: 1, ytitle: 'MLT'}
 
     ylim, name + '_DIST', 0, 8
     ylim, name + '_L', 0, 8
     ylim, name + '_L_STAR', 0, 8
     ylim, name + '_MLT', 0, 24
-  ENDIF
+  endif
 
-  IF KEYWORD_SET(aux_data) THEN BEGIN
-    store_data, name + '_B_CALC', data = {x:data_x, y:data_b_calc}, $
-     dlim={panel_size:1, ytitle:'B model'}
-    store_data, name + '_B_EQ', data = {x:data_x, y:data_b_eq}, $
-     dlim={panel_size:1, ytitle:'B eq model'}
-    store_data, name + '_I', data = {x:data_x, y:data_i}, $
-     dlim={panel_size:1, ytitle:'I (bounce)'}
+  if keyword_set(aux_data) then begin
+    store_data, name + '_B_CALC', data = {x: data_x, y: data_b_calc}, $
+      dlim = {panel_size: 1, ytitle: 'B model'}
+    store_data, name + '_B_EQ', data = {x: data_x, y: data_b_eq}, $
+      dlim = {panel_size: 1, ytitle: 'B eq model'}
+    store_data, name + '_I', data = {x: data_x, y: data_i}, $
+      dlim = {panel_size: 1, ytitle: 'I (bounce)'}
 
     ylim, name + '_B_CALC', 0, 400
     ylim, name + '_B_EQ', 0, 400
     ylim, name + '_I', 0, 5
-  ENDIF
-  ;<<--------------------------------------------------------------------
+  endif
 
-END
+  if keyword_set(eph_data) then begin
+    store_data, name + '_DIST', data = {x: data_x, y: data_dist}, $
+      dlim = {panel_size: 1, ytitle: 'Dist'}
+    store_data, name + '_L', data = {x: data_x, y: data_L}, $
+      dlim = {panel_size: 1, ytitle: 'L'}
+    store_data, name + '_L_STAR', data = {x: data_x, y: data_l_star}, $
+      dlim = {panel_size: 1, ytitle: 'L*'}
+    store_data, name + '_MLT', data = {x: data_x, y: data_mlt}, $
+      dlim = {panel_size: 1, ytitle: 'MLT'}
+
+    ylim, name + '_DIST', 0, 8
+    ylim, name + '_L', 0, 8
+    ylim, name + '_L_STAR', 0, 8
+    ylim, name + '_MLT', 0, 24
+  endif
+
+  if keyword_set(aux_data) then begin
+    store_data, name + '_B_CALC', data = {x: data_x, y: data_b_calc}, $
+      dlim = {panel_size: 1, ytitle: 'B model'}
+    store_data, name + '_B_EQ', data = {x: data_x, y: data_b_eq}, $
+      dlim = {panel_size: 1, ytitle: 'B eq model'}
+    store_data, name + '_I', data = {x: data_x, y: data_i}, $
+      dlim = {panel_size: 1, ytitle: 'I (bounce)'}
+
+    ylim, name + '_B_CALC', 0, 400
+    ylim, name + '_B_EQ', 0, 400
+    ylim, name + '_I', 0, 5
+  endif
+  ; <<--------------------------------------------------------------------
+end
